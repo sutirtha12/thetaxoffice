@@ -1,28 +1,22 @@
-import { useRef, useLayoutEffect } from 'react'
+import { useRef, useLayoutEffect, useEffect } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import { FRAME_COUNT } from '../utils/preloadFrames'
 
 gsap.registerPlugin(ScrollTrigger)
 
-const FRAME_COUNT = 150
-const framePath = (i) => `/frames/frame_${String(i).padStart(4, '0')}.jpg`
-
-export default function Hero() {
+export default function Hero({ frames }) {
   const root = useRef(null)
   const canvasRef = useRef(null)
+  const framesRef = useRef(null)
+  const renderRef = useRef(null)
+
+  framesRef.current = frames
 
   useLayoutEffect(() => {
     const canvas = canvasRef.current
     const ctx = canvas.getContext('2d', { alpha: false })
-    const images = []
     const state = { frame: 0 }
-
-    // ---- preload the frame sequence ----
-    for (let i = 1; i <= FRAME_COUNT; i++) {
-      const img = new Image()
-      img.src = framePath(i)
-      images.push(img)
-    }
 
     let cw = 0, ch = 0, dpr = 1
     const resize = () => {
@@ -37,78 +31,72 @@ export default function Hero() {
       render(true)
     }
 
-    // draw current frame with object-fit: cover behaviour.
-    // Guarded: only repaint when the integer frame actually changes (or on an
-    // explicit force, e.g. resize). Avoids redundant canvas work on every scroll
-    // tick, which is what keeps the scrub buttery.
     let lastFrame = -1
     const render = (force) => {
+      const images = framesRef.current
+      if (!images) return
+
       const f = Math.min(FRAME_COUNT - 1, Math.max(0, Math.round(state.frame)))
       if (!force && f === lastFrame) return
-      const img = images[f]
-      if (!img || !img.complete || !img.naturalWidth) return
+
+      let img = images[f]
+      if (!img?.complete || !img?.naturalWidth) {
+        for (let d = 1; d < FRAME_COUNT; d++) {
+          if (f - d >= 0) {
+            const prev = images[f - d]
+            if (prev?.complete && prev?.naturalWidth) { img = prev; break }
+          }
+          if (f + d < FRAME_COUNT) {
+            const next = images[f + d]
+            if (next?.complete && next?.naturalWidth) { img = next; break }
+          }
+        }
+        if (!img?.complete || !img?.naturalWidth) return
+      }
+
       lastFrame = f
       const ir = img.naturalWidth / img.naturalHeight
       const cr = cw / ch
       let dw, dh, dx, dy
       if (ir > cr) { dh = ch; dw = ch * ir; dx = (cw - dw) / 2; dy = 0 }
       else { dw = cw; dh = cw / ir; dx = 0; dy = (ch - dh) / 2 }
-      // "cover" guarantees full coverage, so no per-frame clear is needed
       ctx.drawImage(img, dx, dy, dw, dh)
     }
 
-    images[0].onload = () => render(true)
+    renderRef.current = render
     resize()
     window.addEventListener('resize', resize)
 
     const ctxGsap = gsap.context(() => {
-      // Initial hidden states: headline + supporting details are NOT shown yet.
-      // The intro line stays visible by default (CSS) so it's always there at the
-      // top and reliably returns whenever you scroll back up.
-      // Headline container starts fully visible (opacity 1); only the WORDS are
-      // pre-hidden (pushed below their clipped line box) so they can rise in.
       gsap.set('.hero-headline', { autoAlpha: 1, yPercent: 0, scale: 1 })
       gsap.set('.hero-headline .word', { yPercent: 120, autoAlpha: 0 })
       gsap.set('.hero-details', { autoAlpha: 0, y: 50 })
 
-      // ---- Scroll-driven frame scrub + staged reveals (pinned) ----
-      // Timeline total duration is 1.0 (the frame scrub below spans 0 -> 1), so
-      // every position/duration here is a fraction of the full pin scroll.
       const tl = gsap.timeline({
         scrollTrigger: {
           trigger: root.current,
           start: 'top top',
           end: '+=2800',
-          scrub: 1,
+          scrub: 0.4,
           pin: true,
           anticipatePin: 1,
         },
       })
 
       tl
-        // frames scrub across the whole pin (defines the 0 -> 1 timeline length)
-        .to(state, { frame: FRAME_COUNT - 1, ease: 'none', snap: 'frame', onUpdate: render, duration: 1 }, 0)
-        // intro line lifts away almost immediately as you begin to scroll
+        .to(state, { frame: FRAME_COUNT - 1, ease: 'none', snap: { frame: 1 }, onUpdate: () => render(false), duration: 1 }, 0)
         .to('.hero-intro', { autoAlpha: 0, y: -40, ease: 'power1.out', duration: 0.1 }, 0.02)
-        // BIG centered headline rises + fades IN early (~10% -> ~30% of scroll),
-        // large and white. Quick, low stagger so it reads as one confident line.
         .fromTo(
           '.hero-headline .word',
           { yPercent: 120, autoAlpha: 0 },
           { yPercent: 0, autoAlpha: 1, stagger: 0.05, ease: 'power3.out', duration: 0.16 },
           0.1
         )
-        // ...and it STAYS centered + full size through the whole middle of the
-        // scroll. No early upward translate / shrink that would hide it.
-        // Near the very end it gives a gentle, still-on-screen handoff: a small
-        // lift + slight scale-down (never off-screen, never shrunk to nothing)
-        // so the supporting details can take the lower third.
         .to(
           '.hero-headline',
           { y: '-4vh', scale: 0.96, ease: 'power1.inOut', duration: 0.22 },
           0.82
         )
-        // supporting details (sub + buttons + stats) rise in over the last stretch
         .fromTo(
           '.hero-details',
           { autoAlpha: 0, y: 50 },
@@ -116,17 +104,7 @@ export default function Hero() {
           0.8
         )
 
-      // Warm-decode every frame (in small batches) so no frame has to decode on
-      // the main thread mid-scroll — this is the key to a jank-free scrub.
-      ;(async () => {
-        for (let i = 0; i < images.length; i += 12) {
-          await Promise.allSettled(
-            images.slice(i, i + 12).map((im) => (im.decode ? im.decode().catch(() => {}) : null))
-          )
-        }
-        ScrollTrigger.refresh()
-        render(true)
-      })()
+      ScrollTrigger.refresh()
     }, root)
 
     return () => {
@@ -135,13 +113,19 @@ export default function Hero() {
     }
   }, [])
 
+  useEffect(() => {
+    if (frames && renderRef.current) {
+      renderRef.current(true)
+      ScrollTrigger.refresh()
+    }
+  }, [frames != null])
+
   return (
     <section ref={root} className="hero-pin">
       <div className="hero-atmos" />
       <canvas ref={canvasRef} className="hero-canvas" />
       <div className="hero-overlay" />
 
-      {/* Center headline + details — hidden until you scroll */}
       <div className="hero-content">
         <h1 className="hero-headline">
           <span className="line">
@@ -180,7 +164,6 @@ export default function Hero() {
         </div>
       </div>
 
-      {/* Initial intro — the only thing visible on first load */}
       <div className="hero-intro">
         <span className="hero-kicker">Est. 2019 · India</span>
         <p className="hero-tagline">

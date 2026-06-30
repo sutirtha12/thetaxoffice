@@ -53,7 +53,7 @@ export default function Footer() {
             },
             {
               title: 'Connect',
-              links: ['LinkedIn', 'Twitter/X', 'contact@thetaxoffice.com', '+1 (512) 555-0147'],
+              links: ['LinkedIn', 'Twitter/X', 'contact@thetaxoffice.in', '+91 98765 43210'],
             },
           ].map(col => (
             <div key={col.title}>
@@ -132,19 +132,35 @@ export default function Footer() {
       <style>{`
         @media (max-width: 768px) {
           .footer-grid {
-            grid-template-columns: repeat(2, 1fr) !important;
+            grid-template-columns: 1fr 1fr !important;
             gap: 2.25rem 1.5rem !important;
             margin-bottom: 3rem !important;
+            text-align: center;
           }
-          .footer-brand { grid-column: 1 / -1; }
+          .footer-brand {
+            grid-column: 1 / -1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+          }
+          .footer-brand p { text-align: center; }
+          .footer-brand a { justify-content: center; }
+          .footer-grid h4 { text-align: center; }
+          .footer-grid ul { align-items: center !important; }
           .footer-bottom {
-            justify-content: flex-start !important;
+            flex-direction: column;
+            align-items: center !important;
+            justify-content: center !important;
+            text-align: center;
             gap: 1.25rem !important;
           }
-          .footer-legal { gap: 1.5rem !important; flex-wrap: wrap; }
+          .footer-legal { gap: 1.5rem !important; flex-wrap: wrap; justify-content: center; }
         }
         @media (max-width: 480px) {
-          .footer-grid { gap: 2rem 1.25rem !important; }
+          .footer-grid {
+            grid-template-columns: 1fr !important;
+            gap: 2rem !important;
+          }
         }
       `}</style>
     </footer>

@@ -307,14 +307,15 @@ export default function Services() {
         @keyframes svcDraw { from { stroke-dashoffset: 600; } to { stroke-dashoffset: 0; } }
 
         @media (max-width: 820px) {
-          .svc-head__sub { max-width: 100%; }
-          .svc-head__row { gap: 1.2rem; }
+          .svc-head__row {
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            gap: 1.2rem;
+          }
+          .svc-head__title { text-align: center; }
+          .svc-head__sub { max-width: 100%; text-align: center; }
 
-          /* Flatten the 7 two-card panels into ONE column of 14 cards, each its
-             own sticky layer, so on mobile the cards overlap ONE BY ONE (not two
-             at a time). display:contents removes the panel/row boxes so every
-             card becomes a direct sticky child of .svc-stack and stacks across
-             the whole section. */
           .svc-stack { padding: 0 clamp(1.1rem, 5vw, 2rem); }
           .svc-panel { display: contents; }
           .svc-row { display: contents; }
@@ -322,14 +323,19 @@ export default function Services() {
             position: sticky;
             top: 80px;
             height: auto;
-            min-height: 54vh;
+            min-height: auto;
             margin-bottom: 7vh;
             padding: 1.5rem 1.4rem;
             border-radius: 18px;
+            text-align: center;
+            align-items: center;
           }
           .svc-card:last-child { margin-bottom: 0; }
-          .svc-title { font-size: 1.45rem; }
+          .svc-card__top { justify-content: center; gap: 0.8rem; }
+          .svc-title { font-size: 1.35rem; }
+          .svc-desc { max-width: 100%; text-align: center; }
           .svc-chart { max-height: 150px; }
+          .svc-card__foot { flex-direction: column; align-items: center; gap: 1rem; }
         }
       `}</style>
     </section>

@@ -1,58 +1,44 @@
 import { useEffect, useRef, useState } from "react";
 
-/**
- * Loader — premium full-screen 3D loading overlay for "THE TAX OFFICE".
- *
- * Centerpiece: a metallic 3D spinning Rupee (₹) coin built with pure CSS 3D
- * transforms (preserve-3d + perspective). Front face, back face and a ring of
- * thin rim segments give it real coin depth so it reads as a solid coin while
- * it flips, not a flat card. A conic-gradient shine sweep, an SVG progress ring
- * and a monospace 0→100 counter complete the fintech vibe.
- *
- * Contract: <Loader onComplete={() => ...} />
- *  - fixed, full-viewport overlay at z-index 100000
- *  - progress 0→100 over ~2.2s, then fade/scale out (~0.6s)
- *  - calls onComplete?.() once fully gone and renders nothing afterwards.
- */
-
-const FILL_MS = 2200; // 0 → 100 duration
-const FADE_MS = 600; // fade/scale-out duration
-
-// Number of thin rim segments used to fake coin thickness.
+const FADE_MS = 600;
 const RIM_SEGMENTS = 36;
 
-export default function Loader({ onComplete }) {
-  const [progress, setProgress] = useState(0);
-  const [phase, setPhase] = useState("loading"); // "loading" | "fading" | "done"
+export default function Loader({ progress = 0, onComplete }) {
+  const [display, setDisplay] = useState(0);
+  const [phase, setPhase] = useState("loading");
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
+  const progressRef = useRef(0);
+  progressRef.current = progress;
 
-  // Drive the progress counter with requestAnimationFrame (smooth, GPU-friendly).
   useEffect(() => {
     let raf = 0;
-    let start = 0;
     let fadeTimer = 0;
     let doneTimer = 0;
+    let current = 0;
+    let settled = false;
 
-    const tick = (now) => {
-      if (!start) start = now;
-      const elapsed = now - start;
-      // easeOutCubic so the counter decelerates as it approaches 100.
-      const t = Math.min(elapsed / FILL_MS, 1);
-      const eased = 1 - Math.pow(1 - t, 3);
-      setProgress(Math.round(eased * 100));
+    const tick = () => {
+      if (settled) return;
 
-      if (t < 1) {
-        raf = requestAnimationFrame(tick);
-      } else {
-        setProgress(100);
-        // Begin fade-out, then unmount + notify.
-        fadeTimer = window.setTimeout(() => setPhase("fading"), 140);
+      const target = progressRef.current * 100;
+      current += (target - current) * 0.14;
+      if (target >= 100 && current > 98.5) current = 100;
+
+      const rounded = Math.round(current);
+      setDisplay(rounded);
+
+      if (rounded >= 100) {
+        settled = true;
+        fadeTimer = window.setTimeout(() => setPhase("fading"), 200);
         doneTimer = window.setTimeout(() => {
           setPhase("done");
           onCompleteRef.current?.();
-        }, 140 + FADE_MS);
+        }, 200 + FADE_MS);
+        return;
       }
+
+      raf = requestAnimationFrame(tick);
     };
 
     raf = requestAnimationFrame(tick);
@@ -63,13 +49,11 @@ export default function Loader({ onComplete }) {
     };
   }, []);
 
-  // After the fade-out completes, render nothing so it can never block the page.
   if (phase === "done") return null;
 
-  // SVG progress ring geometry.
   const R = 130;
   const CIRC = 2 * Math.PI * R;
-  const dashoffset = CIRC * (1 - progress / 100);
+  const dashoffset = CIRC * (1 - display / 100);
 
   return (
     <div
@@ -78,16 +62,14 @@ export default function Loader({ onComplete }) {
       aria-label="Loading"
       aria-valuemin={0}
       aria-valuemax={100}
-      aria-valuenow={progress}
+      aria-valuenow={display}
     >
       <style>{loaderCSS}</style>
 
-      {/* ambient backdrop glow + grid wash */}
       <div className="txo-ambient" aria-hidden="true" />
       <div className="txo-grid" aria-hidden="true" />
 
       <div className="txo-stage">
-        {/* progress ring sits behind the coin */}
         <svg className="txo-ring" width="320" height="320" viewBox="0 0 320 320" aria-hidden="true">
           <defs>
             <linearGradient id="txoRingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -103,9 +85,7 @@ export default function Loader({ onComplete }) {
               </feMerge>
             </filter>
           </defs>
-          {/* track */}
           <circle cx="160" cy="160" r={R} className="txo-ring-track" />
-          {/* progress */}
           <circle
             cx="160"
             cy="160"
@@ -118,10 +98,8 @@ export default function Loader({ onComplete }) {
           />
         </svg>
 
-        {/* 3D coin */}
         <div className="txo-coin-perspective" aria-hidden="true">
           <div className="txo-coin">
-            {/* rim segments — faked thickness around the coin's edge */}
             {Array.from({ length: RIM_SEGMENTS }).map((_, i) => (
               <span
                 key={i}
@@ -130,14 +108,12 @@ export default function Loader({ onComplete }) {
               />
             ))}
 
-            {/* front face */}
             <div className="txo-face txo-face--front">
               <div className="txo-face-sheen" />
               <div className="txo-shine" />
               <span className="txo-symbol">₹</span>
             </div>
 
-            {/* back face */}
             <div className="txo-face txo-face--back">
               <div className="txo-face-sheen" />
               <div className="txo-shine txo-shine--rev" />
@@ -147,10 +123,9 @@ export default function Loader({ onComplete }) {
         </div>
       </div>
 
-      {/* counter + labels */}
       <div className="txo-readout">
         <div className="txo-count">
-          <span className="txo-count-num">{String(progress).padStart(3, "0")}</span>
+          <span className="txo-count-num">{String(display).padStart(3, "0")}</span>
           <span className="txo-count-pct">%</span>
         </div>
         <div className="txo-brand">THE&nbsp;TAX&nbsp;OFFICE</div>
@@ -163,10 +138,6 @@ export default function Loader({ onComplete }) {
   );
 }
 
-/* ----------------------------------------------------------------------- */
-/* All styles scoped under .txo-loader so nothing leaks into the site.     */
-/* Animations touch only transform / opacity for 60fps GPU compositing.    */
-/* ----------------------------------------------------------------------- */
 const loaderCSS = `
 .txo-loader {
   position: fixed;
@@ -196,7 +167,6 @@ const loaderCSS = `
   pointer-events: none;
 }
 
-/* ambient radial glow that breathes behind everything */
 .txo-ambient {
   position: absolute;
   width: 720px;
@@ -216,7 +186,6 @@ const loaderCSS = `
   50%      { transform: scale(1.08); opacity: 1; }
 }
 
-/* faint perspective grid wash for depth */
 .txo-grid {
   position: absolute;
   inset: -20%;
@@ -234,7 +203,6 @@ const loaderCSS = `
   to   { transform: translateY(46px); }
 }
 
-/* stage holds ring + coin, centered */
 .txo-stage {
   position: relative;
   width: 320px;
@@ -243,7 +211,6 @@ const loaderCSS = `
   place-items: center;
 }
 
-/* progress ring */
 .txo-ring {
   position: absolute;
   inset: 0;
@@ -261,7 +228,6 @@ const loaderCSS = `
   transition: stroke-dashoffset 90ms linear;
 }
 
-/* ----- 3D COIN ----- */
 .txo-coin-perspective {
   perspective: 1100px;
   width: 220px;
@@ -285,7 +251,6 @@ const loaderCSS = `
   to   { transform: rotateY(360deg) rotateX(8deg); }
 }
 
-/* coin faces */
 .txo-face {
   position: absolute;
   inset: 0;
@@ -317,7 +282,6 @@ const loaderCSS = `
 .txo-face--front { transform: translateZ(8px); }
 .txo-face--back  { transform: rotateY(180deg) translateZ(8px); }
 
-/* soft metallic sheen highlight on each face */
 .txo-face-sheen {
   position: absolute;
   inset: 0;
@@ -331,7 +295,6 @@ const loaderCSS = `
   pointer-events: none;
 }
 
-/* rotating conic shine sweep across the face */
 .txo-shine {
   position: absolute;
   inset: -25%;
@@ -354,7 +317,6 @@ const loaderCSS = `
   to   { transform: rotate(360deg); }
 }
 
-/* embossed glowing ₹ */
 .txo-symbol {
   position: relative;
   font-family: var(--font-display, 'Poppins', sans-serif);
@@ -379,7 +341,6 @@ const loaderCSS = `
   50%      { filter: drop-shadow(0 0 22px rgba(138, 241, 255, 0.85)) drop-shadow(0 2px 1px rgba(0,0,0,0.55)); }
 }
 
-/* rim segments — many thin slabs arranged around the edge to fake thickness */
 .txo-rim {
   position: absolute;
   top: 50%;
@@ -398,7 +359,6 @@ const loaderCSS = `
   box-shadow: inset 0 0 6px rgba(58, 224, 255, 0.30);
 }
 
-/* ----- READOUT ----- */
 .txo-readout {
   display: flex;
   flex-direction: column;
@@ -431,7 +391,7 @@ const loaderCSS = `
   font-weight: 700;
   letter-spacing: 0.42em;
   color: var(--text-secondary, #868fb0);
-  padding-left: 0.42em; /* compensate trailing letter-spacing */
+  padding-left: 0.42em;
 }
 .txo-status {
   display: inline-flex;
@@ -456,7 +416,6 @@ const loaderCSS = `
   50%      { opacity: 1;    transform: scale(1.15); }
 }
 
-/* respect reduced-motion: kill spins/sweeps, keep the coin + progress legible */
 @media (prefers-reduced-motion: reduce) {
   .txo-coin { animation: none; transform: rotateX(8deg); }
   .txo-shine, .txo-ambient, .txo-grid, .txo-symbol, .txo-dot { animation: none; }

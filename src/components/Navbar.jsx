@@ -144,30 +144,40 @@ export default function Navbar() {
         </button>
       </motion.nav>
 
-      {/* Mobile dropdown menu */}
+      {/* Mobile dropdown backdrop + menu */}
       <AnimatePresence>
         {visible && menuOpen && (
-          <motion.div
-            className="nav-mobile-menu"
-            initial={{ opacity: 0, y: -12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-          >
-            {links.map((link) => (
-              <a
-                key={link}
-                href={`#${link.toLowerCase()}`}
-                className="nav-mobile-link"
-                onClick={() => setMenuOpen(false)}
-              >
-                {link}
-              </a>
-            ))}
-            <button className="nav-mobile-cta" onClick={() => setMenuOpen(false)}>
-              Book a Call
-            </button>
-          </motion.div>
+          <>
+            <motion.div
+              className="nav-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setMenuOpen(false)}
+            />
+            <motion.div
+              className="nav-mobile-menu"
+              initial={{ opacity: 0, y: -12, x: '-50%' }}
+              animate={{ opacity: 1, y: 0, x: '-50%' }}
+              exit={{ opacity: 0, y: -12, x: '-50%' }}
+              transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+            >
+              {links.map((link) => (
+                <a
+                  key={link}
+                  href={`#${link.toLowerCase()}`}
+                  className="nav-mobile-link"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  {link}
+                </a>
+              ))}
+              <button className="nav-mobile-cta" onClick={() => setMenuOpen(false)}>
+                Book a Call
+              </button>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
 
@@ -182,23 +192,27 @@ export default function Navbar() {
           background: rgba(58, 224, 255, 0.08);
           border: 1px solid var(--glass-border);
         }
+        .nav-backdrop {
+          position: fixed;
+          inset: 0;
+          z-index: 10000;
+          background: rgba(6, 7, 15, 0.7);
+        }
         .nav-mobile-menu {
           position: fixed;
-          top: 4.1rem;
+          top: 4.5rem;
           left: 50%;
-          transform: translateX(-50%);
-          z-index: 999;
-          width: min(88vw, 340px);
+          z-index: 10001;
+          width: min(90vw, 340px);
           display: flex;
           flex-direction: column;
+          align-items: center;
           gap: 0.2rem;
-          padding: 0.7rem;
-          background: rgba(9, 11, 22, 0.92);
-          backdrop-filter: blur(22px) saturate(170%);
-          -webkit-backdrop-filter: blur(22px) saturate(170%);
-          border: 1px solid var(--glass-border);
+          padding: 0.8rem;
+          background: #0b0e1e;
+          border: 1px solid rgba(58, 224, 255, 0.18);
           border-radius: 20px;
-          box-shadow: 0 24px 70px rgba(0,0,0,0.6);
+          box-shadow: 0 24px 70px rgba(0,0,0,0.75), 0 0 0 1px rgba(0,0,0,0.4);
         }
         .nav-mobile-link {
           font-family: var(--font-mono);
@@ -209,6 +223,8 @@ export default function Navbar() {
           padding: 0.95rem 1rem;
           border-radius: 12px;
           transition: background 0.2s, color 0.2s;
+          width: 100%;
+          text-align: center;
         }
         .nav-mobile-link:hover, .nav-mobile-link:active {
           background: rgba(58, 224, 255, 0.08);
@@ -225,6 +241,8 @@ export default function Navbar() {
           text-transform: uppercase;
           font-weight: 700;
           border-radius: 12px;
+          width: 100%;
+          text-align: center;
         }
 
         @media (min-width: 769px) {

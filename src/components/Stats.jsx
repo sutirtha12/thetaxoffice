@@ -33,7 +33,7 @@ const stats = [
   { value: 15, suffix: '+', label: 'Years of Excellence', desc: 'Decades of navigating financial complexities' },
   { value: 500, suffix: '+', label: 'Global Clients', desc: 'From startups to Fortune 500 companies' },
   { value: 98, suffix: '%', label: 'Success Rate', desc: 'Audit outcomes meeting or exceeding targets' },
-  { value: 2, suffix: '.4B', prefix: '$', label: 'Assets Under Advisory', desc: 'Total value of portfolios we manage' },
+  { value: 2, suffix: '.4B', prefix: '₹', label: 'Assets Under Advisory', desc: 'Total value of portfolios we manage' },
 ]
 
 export default function Stats() {
@@ -173,11 +173,15 @@ export default function Stats() {
             grid-template-columns: repeat(2, 1fr) !important;
           }
           .stats-card { padding: 1.8rem 1rem !important; }
-          .stats-number { font-size: 2.2rem !important; }
+          .stats-number { font-size: 2rem !important; }
         }
         @media (max-width: 480px) {
-          .stats-card { padding: 1.5rem 0.8rem !important; }
-          .stats-number { font-size: 1.9rem !important; }
+          .stats-grid {
+            grid-template-columns: 1fr 1fr !important;
+            gap: 1px !important;
+          }
+          .stats-card { padding: 1.4rem 0.6rem !important; }
+          .stats-number { font-size: 1.6rem !important; }
         }
       `}</style>
     </section>
